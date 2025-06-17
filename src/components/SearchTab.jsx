@@ -90,7 +90,7 @@ const SearchTab = () => {
 
   if (!token) {
     return (
-      <Box sx={{ px: 2, py: 2 }}>
+      <Box sx={{ px: 2, py: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "80vh" }}>
         <Typography
           variant="h6"
           color="text.primary"
