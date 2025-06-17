@@ -5,7 +5,7 @@ import qs from "querystring";
 const API_BASE = "https://freesound.org/apiv2";
 const CLIENT_ID = import.meta.env.VITE_FREESOUND_CLIENT_ID;
 const API_KEY = import.meta.env.VITE_FREESOUND_API_KEY;
-const REDIRECT_URI = "http://localhost:5173/callback";
+const REDIRECT_URI = "https://sound-mixer.netlify.app/callback";
 
 export const loginFreesound = () => {
   const authUrl = `${API_BASE}/oauth2/authorize/?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(
