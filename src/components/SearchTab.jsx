@@ -173,7 +173,7 @@ const SearchTab = () => {
                           size="small"
                           variant="filled"
                           sx={{ fontSize: "0.75rem" }}
-                          color="success"
+                          color="#f06292"
                         />
                       ))}
                     </Box>
