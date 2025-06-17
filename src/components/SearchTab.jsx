@@ -12,6 +12,7 @@ import {
   Tooltip,
   Box,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import GetAppIcon from "@mui/icons-material/GetApp";
 import { searchSounds, downloadSound } from "../services/freesoundApi";
@@ -36,14 +37,6 @@ const SearchTab = () => {
     try {
       setError(null);
       const sounds = await searchSounds(query, token);
-      console.log(
-        "SearchTab: Preview URLs =",
-        sounds.map((s) => ({
-          id: s.id,
-          name: s.name,
-          preview: s.previews?.["preview-hq-mp3"] || s.previews?.["preview-lq-mp3"],
-        }))
-      );
       setResults(sounds);
     } catch (err) {
       setError("Failed to search sounds: " + err.message);
@@ -168,7 +161,25 @@ const SearchTab = () => {
           >
             <ListItemText
               primary={sound.name}
-              secondary={sound.description || "No description"}
+              secondary={
+                <>
+                  {sound.description || "No description"}
+                  {sound.tags && sound.tags.length > 0 && (
+                    <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      {sound.tags.map((tag, idx) => (
+                        <Chip
+                          key={idx}
+                          label={tag}
+                          size="small"
+                          variant="filled"
+                          sx={{ fontSize: "0.75rem" }}
+                          color="secondary"
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </>
+              }
               primaryTypographyProps={{ fontWeight: "medium" }}
               secondaryTypographyProps={{ color: "text.secondary", fontSize: "0.875rem" }}
             />
