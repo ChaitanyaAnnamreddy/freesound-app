@@ -81,9 +81,9 @@ const MixTab = () => {
       <Box
         sx={{
           display: "flex",
-          flexDirection: { xs: "column", sm: "row" }, // Stack on small screens, row on larger
-          gap: 2, // Space between dropdowns
-          mb: 2, // Margin below the dropdowns
+          flexDirection: { xs: "column", sm: "row" }, 
+          gap: 2, 
+          mb: 2, 
         }}
       >
         <FormControl sx={{ flex: 1, minWidth: 200 }} margin="normal">

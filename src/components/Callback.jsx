@@ -1,62 +1,42 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getAccessToken } from "../services/freesoundApi";
-import { Box, CircularProgress, Typography } from "@mui/material";
+import { Typography, Box, CircularProgress } from "@mui/material";
 
 const Callback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const code = searchParams.get("code");
-    if (code && !isProcessing) {
-      setIsProcessing(true);
+    if (code) {
       getAccessToken(code)
         .then((token) => {
           localStorage.setItem("freesound_token", token);
-          navigate("/", { replace: true });
+          navigate("/");
         })
         .catch((err) => {
-          console.error("Callback: OAuth error:", err);
+          console.error("Failed to get access token:", err);
           setError("Failed to authenticate. Please try again.");
-          setTimeout(() => {
-            setIsProcessing(false);
-            navigate("/", { replace: true });
-          }, 3000);
         });
-    } else if (!code && !isProcessing) {
-      setError("No authorization code found.");
-      setTimeout(() => {
-        navigate("/", { replace: true });
-      }, 3000);
+    } else {
+      setError("No authorization code provided.");
     }
+  }, [searchParams, navigate]);
 
-    return () => {
-      setIsProcessing(false);
-    };
-  }, [searchParams, navigate, isProcessing]);
+  if (error) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
 
   return (
-    <div>
-      {error ? (
-        <Typography color="error">{error}</Typography>
-      ) : (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100vh",
-          }}
-        >
-          <CircularProgress />
-          <Typography>Authenticating...</Typography>
-        </Box>
-      )}
-    </div>
+    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", flexDirection: "column" }}>
+      <CircularProgress />
+    </Box>
   );
 };
 

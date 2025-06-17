@@ -300,7 +300,7 @@ const RecordingsTab = () => {
           No recordings found. Use the controls above to start recording.
         </Typography>
       ) : (
-        <List sx={{ bgcolor: "background.paper" }}>
+        <List sx={{ bgcolor: "background.paper", py: 0 }}>
           {sounds.map((sound, index) => (
             <ListItem
               key={sound.id}

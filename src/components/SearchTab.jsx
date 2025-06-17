@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   TextField,
   Button,
@@ -13,9 +13,14 @@ import {
   Box,
   CircularProgress,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import GetAppIcon from "@mui/icons-material/GetApp";
-import { searchSounds, downloadSound } from "../services/freesoundApi";
+import { searchSounds, downloadSound, loginFreesound } from "../services/freesoundApi";
 import useDB from "../hooks/useDB";
 import AudioPlayer from "./AudioPlayer";
 
@@ -25,25 +30,42 @@ const SearchTab = () => {
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [downloadingId, setDownloadingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const { saveSound, isWorkerReady, workerError } = useDB();
   const token = localStorage.getItem("freesound_token");
 
   const handleSearch = async () => {
-    if (!token) {
-      setError("Please log in to search sounds");
-      return;
-    }
     try {
       setError(null);
+      setLoading(true);
       const sounds = await searchSounds(query, token);
       setResults(sounds);
     } catch (err) {
       setError("Failed to search sounds: " + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (isWorkerReady) {
+      handleSearch();
+    }
+  }, [isWorkerReady]);
+
+  const handleTagClick = (tag) => {
+    setQuery(tag);
+    handleSearch();
+  };
+
   const handleDownload = async (sound) => {
+    if (!token) {
+      setLoginDialogOpen(true);
+      return;
+    }
     try {
       setError(null);
       setDownloadingId(sound.id);
@@ -65,10 +87,14 @@ const SearchTab = () => {
 
       // Show success message
       setSnackbarMessage(`Sound ${sound.name || `ID ${sound.id}`} downloaded and saved successfully`);
+      setSnackbarSeverity("success");
       setSnackbarOpen(true);
     } catch (err) {
       console.error("Download or save error:", err.message);
       setError(`Failed to download or save sound: ${err.message}`);
+      setSnackbarMessage(`Failed to download or save sound: ${err.message}`);
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
     } finally {
       setDownloadingId(null);
     }
@@ -79,24 +105,17 @@ const SearchTab = () => {
       return;
     }
     setSnackbarOpen(false);
+    setSnackbarSeverity("success");
   };
 
-  if (!token) {
-    return (
-      <Box sx={{ px: 2, py: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "80vh" }}>
-        <Typography
-          variant="h6"
-          color="text.primary"
-          sx={{ mb: 2, fontWeight: "medium" }}
-        >
-          Please Log In
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
-          You need to log in to search and download sounds. Use your Freesound account to access the search functionality.
-        </Typography>
-      </Box>
-    );
-  }
+  const handleLoginDialogClose = () => {
+    setLoginDialogOpen(false);
+  };
+
+  const handleLoginRedirect = () => {
+    setLoginDialogOpen(false);
+    loginFreesound();
+  };
 
   return (
     <Box sx={{ px: 2, py: 2 }}>
@@ -131,83 +150,99 @@ const SearchTab = () => {
         <Button
           variant="contained"
           onClick={handleSearch}
-          disabled={!isWorkerReady}
+          disabled={!isWorkerReady || loading}
           sx={{ alignSelf: "center" }}
         >
           Search
         </Button>
       </Box>
-      {results.length === 0 && isWorkerReady && !error && (
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh", flexDirection: "column" }}>
+          <CircularProgress />
+          <Typography color="textSecondary" sx={{ mt: 2 }}>
+            Loading...
+          </Typography>
+        </Box>
+      ) : results.length === 0 && isWorkerReady && !error ? (
         <Typography color="textSecondary" sx={{ mt: 2 }}>
           No results found. Try searching for a sound.
         </Typography>
-      )}
-      <List sx={{ bgcolor: "background.paper" }}>
-        {results.map((sound, index) => (
-          <ListItem
-            key={sound.id}
-            sx={{
-              py: 1,
-              px: 2,
-              transition: "background-color 0.2s ease, box-shadow 0.2s ease",
-              "&:hover": {
-                backgroundColor: "action.hover",
-                boxShadow: 1,
-              },
-              borderBottom:
-                index < results.length - 1 ? "1px solid" : "none",
-              borderColor: "divider",
-            }}
-          >
-            <ListItemText
-              primary={sound.name}
-              secondary={
-                <>
-                  {sound.description || "No description"}
-                  {sound.tags && sound.tags.length > 0 && (
-                    <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {sound.tags.map((tag, idx) => (
-                        <Chip
-                          key={idx}
-                          label={tag}
-                          size="small"
-                          variant="filled"
-                          sx={{ fontSize: "0.75rem", backgroundColor: "#f06292", color: "white" }}
-                        />
-                      ))}
-                    </Box>
-                  )}
-                </>
-              }
-              primaryTypographyProps={{ fontWeight: "medium" }}
-              secondaryTypographyProps={{ color: "text.secondary", fontSize: "0.875rem" }}
-            />
-            {sound.previews?.["preview-hq-mp3"] || sound.previews?.["preview-lq-mp3"] ? (
-              <AudioPlayer
-                src={sound.previews["preview-hq-mp3"] || sound.previews["preview-lq-mp3"]}
+      ) : (
+        <List sx={{ bgcolor: "background.paper", py: 0 }}>
+          {results.map((sound, index) => (
+            <ListItem
+              key={sound.id}
+              sx={{
+                py: 1,
+                px: 2,
+                transition: "background-color 0.2s ease, box-shadow 0.2s ease",
+                "&:hover": {
+                  backgroundColor: "action.hover",
+                  boxShadow: 1,
+                },
+                borderBottom:
+                  index < results.length - 1 ? "1px solid" : "none",
+                borderColor: "divider",
+              }}
+            >
+              <ListItemText
+                primary={sound.name}
+                secondary={
+                  <>
+                    {sound.description || "No description"}
+                    {sound.tags && sound.tags.length > 0 && (
+                      <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                        {sound.tags.map((tag, idx) => (
+                          <Chip
+                            key={idx}
+                            label={tag}
+                            size="small"
+                            variant="filled"
+                            sx={{ fontSize: "0.75rem", backgroundColor: "#f06292", color: "white", cursor: "pointer" }}
+                            onClick={() => handleTagClick(tag)}
+                          />
+                        ))}
+                      </Box>
+                    )}
+                  </>
+                }
+                primaryTypographyProps={{ fontWeight: "medium" }}
+                secondaryTypographyProps={{ color: "text.secondary", fontSize: "0.875rem" }}
               />
-            ) : (
-              <Typography variant="body2" color="textSecondary">
-                No preview available
-              </Typography>
-            )}
-            <Tooltip title="Download sound" arrow placement="top">
-              <span>
-                <IconButton
-                  onClick={() => handleDownload(sound)}
-                  disabled={!isWorkerReady || downloadingId === sound.id}
-                >
-                  {downloadingId === sound.id ? (
-                    <CircularProgress size={24} />
-                  ) : (
-                    <GetAppIcon />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
-          </ListItem>
-        ))}
-      </List>
+              {sound.previews?.["preview-hq-mp3"] || sound.previews?.["preview-lq-mp3"] ? (
+                <AudioPlayer
+                  src={sound.previews["preview-hq-mp3"] || sound.previews["preview-lq-mp3"]}
+                />
+              ) : (
+                <Typography variant="body2" color="textSecondary">
+                  No preview available
+                </Typography>
+              )}
+              <Tooltip title={token ? "Download sound" : "Please log in to download"} arrow placement="top">
+                <span>
+                  <IconButton
+                    onClick={() => handleDownload(sound)}
+                    disabled={!isWorkerReady || downloadingId === sound.id}
+                    color="primary"
+                    sx={{
+                      "&:hover": {
+                        bgcolor: "primary.light",
+                        color: "primary.contrastText",
+                      },
+                    }}
+                  >
+                    {downloadingId === sound.id ? (
+                      <CircularProgress size={24} color="primary" />
+                    ) : (
+                      <GetAppIcon />
+                    )}
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </ListItem>
+          ))}
+        </List>
+      )}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}
@@ -216,12 +251,32 @@ const SearchTab = () => {
       >
         <Alert
           onClose={handleSnackbarClose}
-          severity={error ? "error" : "success"}
+          severity={snackbarSeverity}
           sx={{ width: "100%" }}
         >
           {snackbarMessage}
         </Alert>
       </Snackbar>
+      <Dialog
+        open={loginDialogOpen}
+        onClose={handleLoginDialogClose}
+        aria-labelledby="login-dialog-title"
+      >
+        <DialogTitle id="login-dialog-title">Log In Required</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Please log in to download sounds. Use your Freesound account to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleLoginDialogClose} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleLoginRedirect} color="primary" variant="contained">
+            Log In
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
