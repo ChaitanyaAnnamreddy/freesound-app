@@ -20,6 +20,12 @@ self.onmessage = async (e) => {
     } else if (action === "getSoundById") {
       const sound = await db.sounds.get(data.id);
       self.postMessage({ status: "success", action, data: sound, promiseId });
+    } else if (action === "deleteSound") {
+      const deletedCount = await db.sounds.where("id").equals(data.id).delete();
+      if (deletedCount === 0) {
+        throw new Error(`Sound with ID ${data.id} not found`);
+      }
+      self.postMessage({ status: "success", action, promiseId });
     } else {
       throw new Error(`Unknown action: ${action}`);
     }

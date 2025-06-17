@@ -13,7 +13,6 @@ import {
   Box,
   CircularProgress,
 } from "@mui/material";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import GetAppIcon from "@mui/icons-material/GetApp";
 import { searchSounds, downloadSound } from "../services/freesoundApi";
 import useDB from "../hooks/useDB";
@@ -25,12 +24,9 @@ const SearchTab = () => {
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [downloadingId, setDownloadingId] = useState(null); // Track downloading sound ID
+  const [downloadingId, setDownloadingId] = useState(null);
   const { saveSound, isWorkerReady, workerError } = useDB();
   const token = localStorage.getItem("freesound_token");
-  console.log("SearchTab: token =", token);
-
-  console.log("SearchTab: Rendering with results =", results.length);
 
   const handleSearch = async () => {
     if (!token) {
@@ -49,9 +45,7 @@ const SearchTab = () => {
         }))
       );
       setResults(sounds);
-      console.log("SearchTab: Search completed, results =", sounds.length);
     } catch (err) {
-      console.error("Search error:", err);
       setError("Failed to search sounds: " + err.message);
     }
   };
@@ -59,8 +53,7 @@ const SearchTab = () => {
   const handleDownload = async (sound) => {
     try {
       setError(null);
-      setDownloadingId(sound.id); // Set loading state
-      console.log("SearchTab: Downloading sound ID =", sound.id);
+      setDownloadingId(sound.id);
       const blob = await downloadSound(sound.id, token);
 
       // Trigger file download
@@ -76,7 +69,6 @@ const SearchTab = () => {
       // Save to database
       const name = sound.name || `sound-${sound.id}.mp3`;
       await saveSound("downloaded", name, blob);
-      console.log("SearchTab: Saved sound to database", { id: sound.id, name });
 
       // Show success message
       setSnackbarMessage(`Sound ${sound.name || `ID ${sound.id}`} downloaded and saved successfully`);
@@ -85,7 +77,7 @@ const SearchTab = () => {
       console.error("Download or save error:", err.message);
       setError(`Failed to download or save sound: ${err.message}`);
     } finally {
-      setDownloadingId(null); // Clear loading state
+      setDownloadingId(null);
     }
   };
 
@@ -95,6 +87,23 @@ const SearchTab = () => {
     }
     setSnackbarOpen(false);
   };
+
+  if (!token) {
+    return (
+      <Box sx={{ px: 2, py: 2 }}>
+        <Typography
+          variant="h6"
+          color="text.primary"
+          sx={{ mb: 2, fontWeight: "medium" }}
+        >
+          Please Log In
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 2 }}>
+          You need to log in to search and download sounds. Use your Freesound account to access the search functionality.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ px: 2, py: 2 }}>
@@ -129,7 +138,7 @@ const SearchTab = () => {
         <Button
           variant="contained"
           onClick={handleSearch}
-          disabled={!token}
+          disabled={!isWorkerReady}
           sx={{ alignSelf: "center" }}
         >
           Search
@@ -149,13 +158,11 @@ const SearchTab = () => {
               px: 2,
               transition: "background-color 0.2s ease, box-shadow 0.2s ease",
               "&:hover": {
-                backgroundColor: "action.hover", 
+                backgroundColor: "action.hover",
                 boxShadow: 1,
               },
               borderBottom:
-                index < results.length - 1
-                  ? "1px solid"
-                  : "none",
+                index < results.length - 1 ? "1px solid" : "none",
               borderColor: "divider",
             }}
           >
@@ -178,7 +185,7 @@ const SearchTab = () => {
               <span>
                 <IconButton
                   onClick={() => handleDownload(sound)}
-                  disabled={!token || !isWorkerReady || downloadingId === sound.id}
+                  disabled={!isWorkerReady || downloadingId === sound.id}
                 >
                   {downloadingId === sound.id ? (
                     <CircularProgress size={24} />

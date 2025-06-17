@@ -9,6 +9,13 @@ import {
   Tooltip,
   IconButton,
   CircularProgress,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import StopIcon from "@mui/icons-material/Stop";
@@ -27,10 +34,15 @@ const RecordingsTab = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [soundToDelete, setSoundToDelete] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
-  const { getSounds, saveSound, isWorkerReady, workerError } = useDB();
+  const { getSounds, saveSound, deleteSound, isWorkerReady, workerError } = useDB();
+  const token = localStorage.getItem("freesound_token");
 
   const getSupportedMimeType = () => {
     const types = [
@@ -81,6 +93,8 @@ const RecordingsTab = () => {
         } catch (err) {
           console.error("RecordingsTab: Save error", err);
           setError("Failed to save recording: " + err.message);
+          setSnackbarMessage("Failed to save recording: " + err.message);
+          setSnackbarOpen(true);
         }
         chunks.length = 0;
         stream.getTracks().forEach((track) => track.stop());
@@ -92,6 +106,8 @@ const RecordingsTab = () => {
     } catch (err) {
       console.error("RecordingsTab: Start recording error", err);
       setError("Failed to start recording: " + err.message);
+      setSnackbarMessage("Failed to start recording: " + err.message);
+      setSnackbarOpen(true);
     }
   };
 
@@ -128,9 +144,10 @@ const RecordingsTab = () => {
               console.error("RecordingsTab: getSounds returned non-array:", sounds);
               setSounds([]);
               setError("Invalid data format from database");
+              setSnackbarMessage("Invalid data format from database");
+              setSnackbarOpen(true);
               return;
             }
-            console.log("RecordingsTab: Retrieved sounds =", sounds);
             setSounds(sounds);
             setError(null);
           }
@@ -139,6 +156,8 @@ const RecordingsTab = () => {
           if (isLatest) {
             console.error("Error fetching sounds:", err);
             setError(err.message);
+            setSnackbarMessage("Failed to fetch recordings: " + err.message);
+            setSnackbarOpen(true);
           }
         })
         .finally(() => {
@@ -155,18 +174,58 @@ const RecordingsTab = () => {
     return cleanup;
   }, [getSounds, isWorkerReady, refreshKey]);
 
-  const handleDelete = async (soundId) => {
+  const handleOpenDialog = (soundId) => {
+    setSoundToDelete(soundId);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSoundToDelete(null);
+  };
+
+  const handleDelete = async () => {
     try {
       setError(null);
-      // Note: You'll need to add a deleteSound function to useDB hook
-      // For now, we'll simulate deletion by filtering out the sound
-      setSounds(sounds.filter((sound) => sound.id !== soundId));
-      console.log("RecordingsTab: Deleted sound ID =", soundId);
+      // Delete from database
+      await deleteSound(soundToDelete);
+      // Update UI by removing the sound
+      setSounds(sounds.filter((sound) => sound.id !== soundToDelete));
+      // Show success message
+      setSnackbarMessage("Recording deleted successfully");
+      setSnackbarOpen(true);
     } catch (err) {
-      console.error("RecordingsTab: Delete error", err);
       setError("Failed to delete recording: " + err.message);
+      setSnackbarMessage("Failed to delete recording: " + err.message);
+      setSnackbarOpen(true);
+    } finally {
+      handleCloseDialog();
     }
   };
+
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
+  if (!token) {
+    return (
+      <Box sx={{ px: 2, py: 2 }}>
+        <Typography
+          variant="h6"
+          color="text.primary"
+          sx={{ mb: 2, fontWeight: "medium" }}
+        >
+          Please Log In
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 2 }}>
+          You need to log in to record and manage sounds. Use your Freesound account to access the recording functionality.
+        </Typography>
+      </Box>
+    );
+  }
 
   if (workerError) {
     return <Typography color="error">Database Error: {workerError}</Typography>;
@@ -274,8 +333,9 @@ const RecordingsTab = () => {
               <AudioPlayer src={URL.createObjectURL(sound.blob)} />
               <Tooltip title="Delete recording" arrow placement="top">
                 <IconButton
-                  onClick={() => handleDelete(sound.id)}
+                  onClick={() => handleOpenDialog(sound.id)}
                   disabled={isRecording}
+                  color="error"
                 >
                   <DeleteIcon />
                 </IconButton>
@@ -284,6 +344,40 @@ const RecordingsTab = () => {
           ))}
         </List>
       )}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={error ? "error" : "success"}
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        aria-labelledby="delete-confirmation-dialog"
+      >
+        <DialogTitle id="delete-confirmation-dialog">Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will permanently delete the recording from the database. Are you sure you want to proceed?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { Button, Select, MenuItem, FormControl, InputLabel, Typography, Box } from "@mui/material";
+import {
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Typography,
+  Box,
+} from "@mui/material";
 import AudioPlayer from "./AudioPlayer";
 import useDB from "../hooks/useDB";
 
@@ -11,6 +19,7 @@ const MixTab = () => {
   const [mixedAudio, setMixedAudio] = useState(null);
   const { getSounds, isWorkerReady, workerError } = useDB();
   const worker = useRef(null);
+  const token = localStorage.getItem("freesound_token");
 
   useEffect(() => {
     worker.current = new Worker(new URL("../workers/audioProcessor.js", import.meta.url), {
@@ -20,11 +29,11 @@ const MixTab = () => {
   }, []);
 
   useEffect(() => {
-    if (isWorkerReady) {
+    if (isWorkerReady && token) {
       getSounds("downloaded").then(setDownloadedSounds).catch(console.error);
       getSounds("recorded").then(setRecordedSounds).catch(console.error);
     }
-  }, [getSounds, isWorkerReady]);
+  }, [getSounds, isWorkerReady, token]);
 
   const handleMix = () => {
     const sound1 = downloadedSounds.find((s) => s.id === selectedDownload);
@@ -41,6 +50,23 @@ const MixTab = () => {
       };
     }
   };
+
+  if (!token) {
+    return (
+      <Box sx={{ px: 2, py: 2 }}>
+        <Typography
+          variant="h6"
+          color="text.primary"
+          sx={{ mb: 2, fontWeight: "medium" }}
+        >
+          Please Log In
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 2 }}>
+          You need to log in to mix sounds. Use your Freesound account to access the mixing functionality.
+        </Typography>
+      </Box>
+    );
+  }
 
   if (workerError) {
     return <Typography color="error">Database Error: {workerError}</Typography>;

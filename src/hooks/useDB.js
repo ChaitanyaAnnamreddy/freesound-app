@@ -30,21 +30,20 @@ const useDB = () => {
         setIsWorkerReady(false);
       };
 
-
-dbWorker.onmessage = (e) => {
-  const { action, status, data, error, promiseId } = e.data;
-  const promise = pendingPromises.current.get(promiseId);
-  if (promise) {
-    if (status === "success") {
-      promise.resolve(data);
-    } else {
-      promise.reject(new Error(error || "Unknown worker error"));
-    }
-    pendingPromises.current.delete(promiseId);
-  } else {
-    console.warn("useDB: No promise found for promiseId =", promiseId);
-  }
-};
+      dbWorker.onmessage = (e) => {
+        const { action, status, data, error, promiseId } = e.data;
+        const promise = pendingPromises.current.get(promiseId);
+        if (promise) {
+          if (status === "success") {
+            promise.resolve(data);
+          } else {
+            promise.reject(new Error(error || "Unknown worker error"));
+          }
+          pendingPromises.current.delete(promiseId);
+        } else {
+          console.warn("useDB: No promise found for promiseId =", promiseId);
+        }
+      };
 
       setWorker(dbWorker);
       setIsWorkerReady(true);
@@ -68,35 +67,33 @@ dbWorker.onmessage = (e) => {
     };
   }, []);
 
-const sendMessage = (action, data) => {
-  if (!worker || !isWorkerReady) {
-    const errorMsg = workerError || "Web Worker is not initialized";
-    console.error("sendMessage error:", errorMsg);
-    return Promise.reject(new Error(errorMsg));
-  }
-  return new Promise((resolve, reject) => {
-    // Use a unique ID for each message
-    const promiseId = `${action}-${Date.now()}-${Math.random()}`;
-    pendingPromises.current.set(promiseId, { resolve, reject });
-    try {
-      const isValidBlob = data.blob instanceof Blob && data.blob.size > 0 && data.blob.type;
-      const transfer = isValidBlob ? [data.blob] : [];
-      worker.postMessage({ action, data, promiseId }, transfer);
-    } catch (error) {
-      console.error("postMessage error:", error);
-      // Fallback: Send without transfer
-      try {
-        worker.postMessage({ action, data, promiseId }, []);
-        resolve();
-      } catch (fallbackError) {
-        console.error("sendMessage fallback error:", fallbackError);
-        reject(new Error(`Failed to send message: ${fallbackError.message}`));
-      }
+  const sendMessage = (action, data) => {
+    if (!worker || !isWorkerReady) {
+      const errorMsg = workerError || "Web Worker is not initialized";
+      console.error("sendMessage error:", errorMsg);
+      return Promise.reject(new Error(errorMsg));
     }
-  });
-};
+    return new Promise((resolve, reject) => {
+      const promiseId = `${action}-${Date.now()}-${Math.random()}`;
+      pendingPromises.current.set(promiseId, { resolve, reject });
+      try {
+        const isValidBlob = data?.blob instanceof Blob && data.blob.size > 0 && data.blob.type;
+        const transfer = isValidBlob ? [data.blob] : [];
+        worker.postMessage({ action, data, promiseId }, transfer);
+      } catch (error) {
+        console.error("postMessage error:", error);
+        try {
+          worker.postMessage({ action, data, promiseId }, []);
+          resolve();
+        } catch (fallbackError) {
+          console.error("sendMessage fallback error:", fallbackError);
+          reject(new Error(`Failed to send message: ${fallbackError.message}`));
+        }
+      }
+    });
+  };
 
-const saveSound = useCallback((type, name, blob) => {
+  const saveSound = useCallback((type, name, blob) => {
     if (!(blob instanceof Blob) || blob.size === 0 || !blob.type) {
       console.error("saveSound: Invalid Blob", blob);
       return Promise.reject(new Error("Invalid Blob provided"));
@@ -109,17 +106,21 @@ const saveSound = useCallback((type, name, blob) => {
     });
   }, [worker, isWorkerReady]);
 
-const getSounds = useCallback((type) => {
+  const getSounds = useCallback((type) => {
     return sendMessage("getSounds", { type }).then((sounds) => {
       return sounds;
     });
   }, [worker, isWorkerReady]);
 
-const getSoundById = useCallback((id) => {
+  const getSoundById = useCallback((id) => {
     return sendMessage("getSoundById", { id });
   }, [worker, isWorkerReady]);
 
-  return { saveSound, getSounds, getSoundById, isWorkerReady, workerError };
+  const deleteSound = useCallback((id) => {
+    return sendMessage("deleteSound", { id });
+  }, [worker, isWorkerReady]);
+
+  return { saveSound, getSounds, getSoundById, deleteSound, isWorkerReady, workerError };
 };
 
 export default useDB;
