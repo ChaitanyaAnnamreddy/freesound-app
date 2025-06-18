@@ -187,11 +187,8 @@ const RecordingsTab = () => {
   const handleDelete = async () => {
     try {
       setError(null);
-      // Delete from database
       await deleteSound(soundToDelete);
-      // Update UI by removing the sound
       setSounds(sounds.filter((sound) => sound.id !== soundToDelete));
-      // Show success message
       setSnackbarMessage("Recording deleted successfully");
       setSnackbarOpen(true);
     } catch (err) {
@@ -250,6 +247,7 @@ const RecordingsTab = () => {
               variant="outlined"
               onClick={() => setRefreshKey((prev) => prev + 1)}
               disabled={isRecording || isRefreshing}
+              sx={{ borderRadius: "8px" }}
             >
               {isRefreshing ? <CircularProgress size={20} /> : <RefreshIcon />}
             </Button>
@@ -268,6 +266,7 @@ const RecordingsTab = () => {
             color={isRecording ? "secondary" : "primary"}
             onClick={isRecording ? stopRecording : startRecording}
             disabled={!isWorkerReady || isPaused}
+            sx={{ borderRadius: "8px" }}
           >
             {isRecording ? <StopIcon /> : <MicIcon />}
           </Button>
@@ -282,6 +281,7 @@ const RecordingsTab = () => {
             color="primary"
             onClick={isPaused ? resumeRecording : pauseRecording}
             disabled={!isRecording}
+            sx={{ borderRadius: "8px" }}
           >
             <PauseIcon />
           </Button>
@@ -289,33 +289,41 @@ const RecordingsTab = () => {
       </Box>
       {audioUrl && (
         <Box sx={{ mt: 2, mb: 3 }}>
-          <Typography variant="body1" sx={{ mb: 1 }}>
+          <Typography variant="body1" sx={{ mb: 1, fontWeight: "medium" }}>
             Latest Recording:
           </Typography>
           <audio src={audioUrl} controls />
         </Box>
       )}
       {sounds.length === 0 ? (
-        <Typography color="textSecondary" sx={{ mt: 2 }}>
+        <Typography color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
           No recordings found. Use the controls above to start recording.
         </Typography>
       ) : (
-        <List sx={{ bgcolor: "background.paper", py: 0 }}>
+        <List sx={{ bgcolor: "transparent", py: 0 }}>
           {sounds.map((sound, index) => (
             <ListItem
               key={sound.id}
               sx={{
-                py: 1,
-                px: 2,
-                transition: "background-color 0.2s ease, box-shadow 0.2s ease",
+                bgcolor: "background.paper",
+                borderRadius: "12px",
+                mb: 1.5,
+                p: { xs: 1.5, sm: 2 },
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                transition: "transform 0.2s, box-shadow 0.2s",
                 "&:hover": {
-                  backgroundColor: "action.hover",
-                  boxShadow: 1,
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                 },
-                borderBottom:
-                  index < sounds.length - 1 ? "1px solid" : "none",
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                alignItems: { xs: "stretch", sm: "center" },
+                gap: 2,
+                border: "1px solid",
                 borderColor: "divider",
               }}
+              role="listitem"
+              aria-label={`Recording: ${sound.name}`}
             >
               <ListItemText
                 primary={sound.name}
@@ -324,22 +332,49 @@ const RecordingsTab = () => {
                     ? new Date(sound.createdAt).toLocaleString()
                     : null
                 }
-                primaryTypographyProps={{ fontWeight: "medium" }}
+                primaryTypographyProps={{
+                  variant: "h6",
+                  fontWeight: "bold",
+                  fontSize: { xs: "1rem", sm: "1.1rem" },
+                  color: "text.primary",
+                  noWrap: true,
+                  textOverflow: "ellipsis",
+                }}
                 secondaryTypographyProps={{
                   color: "text.secondary",
-                  fontSize: "0.875rem",
+                  fontSize: "0.85rem",
                 }}
+                sx={{ flex: 1, minWidth: 0 }}
               />
-              <AudioPlayer src={URL.createObjectURL(sound.blob)} />
-              <Tooltip title="Delete recording" arrow placement="top">
-                <IconButton
-                  onClick={() => handleOpenDialog(sound.id)}
-                  disabled={isRecording}
-                  color="error"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  flexShrink: 0,
+                  mt: { xs: 1, sm: 0 },
+                }}
+              >
+                <AudioPlayer src={URL.createObjectURL(sound.blob)} />
+                <Tooltip title="Delete recording" arrow placement="top">
+                  <IconButton
+                    onClick={() => handleOpenDialog(sound.id)}
+                    disabled={isRecording}
+                    color="error"
+                    sx={{
+                      "&:hover": {
+                        bgcolor: "error.light",
+                        color: "error.contrastText",
+                        transform: "scale(1.1)",
+                      },
+                      transition: "transform 0.2s, background-color 0.2s",
+                    }}
+                    aria-label="Delete recording"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </ListItem>
           ))}
         </List>

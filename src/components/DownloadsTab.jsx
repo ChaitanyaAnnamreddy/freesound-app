@@ -134,37 +134,46 @@ const DownloadsTab = () => {
         </Typography>
       )}
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Tooltip title="Refresh" arrow placement="top">
+        <Tooltip title="Refresh downloads" arrow placement="top">
           <Button
             size="small"
             variant="outlined"
             onClick={() => setRefreshKey((prev) => prev + 1)}
+            sx={{ borderRadius: "8px" }}
           >
             <RefreshIcon />
           </Button>
         </Tooltip>
       </Box>
       {sounds.length === 0 ? (
-        <Typography color="textSecondary" sx={{ mt: 2 }}>
+        <Typography color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
           No downloaded sounds found.
         </Typography>
       ) : (
-        <List sx={{ bgcolor: "background.paper" }}>
+        <List sx={{ bgcolor: "transparent", py: 0 }}>
           {sounds.map((sound, index) => (
             <ListItem
               key={sound.id}
               sx={{
-                py: 1,
-                px: 2,
-                transition: "background-color 0.2s ease, box-shadow 0.2s ease",
+                bgcolor: "background.paper",
+                borderRadius: "12px",
+                mb: 1.5,
+                p: { xs: 1.5, sm: 2 },
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                transition: "transform 0.2s, box-shadow 0.2s",
                 "&:hover": {
-                  backgroundColor: "action.hover",
-                  boxShadow: 1,
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                 },
-                borderBottom:
-                  index < sounds.length - 1 ? "1px solid" : "none",
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                alignItems: { xs: "stretch", sm: "center" },
+                gap: 2,
+                border: "1px solid",
                 borderColor: "divider",
               }}
+              role="listitem"
+              aria-label={`Downloaded sound: ${sound.name}`}
             >
               <ListItemText
                 primary={sound.name}
@@ -173,21 +182,50 @@ const DownloadsTab = () => {
                     ? new Date(sound.createdAt).toLocaleString()
                     : null
                 }
-                primaryTypographyProps={{ fontWeight: "medium" }}
-                secondaryTypographyProps={{
-                  color: "text.secondary",
-                  fontSize: "0.875rem",
+                slotProps={{
+                  primary: {
+                    variant: "h6",
+                    fontWeight: "bold",
+                    fontSize: { xs: "1rem", sm: "1.1rem" },
+                    color: "text.primary",
+                    noWrap: true,
+                    textOverflow: "ellipsis",
+                  },
+                  secondary: {
+                    color: "text.secondary",
+                    fontSize: "0.85rem",
+                  },
                 }}
+                sx={{ flex: 1, minWidth: 0 }}
               />
-              <AudioPlayer src={URL.createObjectURL(sound.blob)} />
-              <Tooltip title="Delete sound" arrow placement="top">
-                <IconButton
-                  onClick={() => handleOpenDialog(sound.id)}
-                  color="error"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  flexShrink: 0,
+                  mt: { xs: 1, sm: 0 },
+                }}
+              >
+                <AudioPlayer src={URL.createObjectURL(sound.blob)} />
+                <Tooltip title="Delete sound" arrow placement="top">
+                  <IconButton
+                    onClick={() => handleOpenDialog(sound.id)}
+                    color="error"
+                    sx={{
+                      "&:hover": {
+                        bgcolor: "error.light",
+                        color: "error.contrastText",
+                        transform: "scale(1.1)",
+                      },
+                      transition: "transform 0.2s, background-color 0.2s",
+                    }}
+                    aria-label="Delete downloaded sound"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </ListItem>
           ))}
         </List>
